@@ -1,0 +1,136 @@
+#test nakamura
+services:
+  ubuntu:
+    build:
+      context: .
+      dockerfile: /home/teamF/ubuntu/Dockerfile
+    # container_nameは命名規則に従ってください。"/"はエラーになるため使用不可。大文字可。
+    container_name: teamF_ubuntu
+    hostname: base
+    stdin_open: true
+    #
+    # volumeアタッチする場合
+    volumes:
+      - /home/teamF
+      - /home/teamF/src:/llm
+      - /home/teamF/model:/llm/model
+    #
+    # ポートフォワードする場合
+    ports:
+      - '49800:80'
+      - '49801:443'
+    # GPUをコンテナで利用する場合は以下を設定してください。おまじない。
+    env_file:
+      - .env
+    networks:
+      - teamF-network
+    depends_on:
+      - standalone
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+  ollama:
+    image: ollama/ollama
+    container_name: teamF_ollama
+    runtime: nvidia # NVIDIA GPUを使用するためにruntimeを設定
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "49802:11434"
+    # environment:
+    #   - NVIDIA_VISIBLE_DEVICES=0
+    #   - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    command: serve
+    restart: always
+    tty: true
+    networks:
+      - teamF-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+
+  etcd:
+    container_name: teamF_milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    ports:
+      - "49894:2379"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - teamF-network
+    healthcheck:
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    container_name: teamF_milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "49891:9001"
+      - "49890:9000"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    networks:
+      - teamF-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:9000/minio/health/live"
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  standalone:
+    container_name: teamF_milvus-standalone
+    image: milvusdb/milvus:v2.3.8
+    command: [ "milvus", "run", "standalone" ]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://minio:9001/healthz" ]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "49892:19530"
+      - "49893:9091"
+    networks:
+      - teamF-network
+    depends_on:
+      - "etcd"
+      - "minio"
+
+volumes:
+  ollama:
+networks:
+  teamF-network:

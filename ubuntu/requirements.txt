@@ -1,0 +1,14 @@
+torch
+llama-index
+transformers
+llama_cpp_python
+gpustat
+numpy
+pymilvus
+langchain
+tqdm
+pandas
+lxml
+unstructured
+faiss-gpu
+sentence_transformers
