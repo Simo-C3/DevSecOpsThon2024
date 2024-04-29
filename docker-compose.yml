@@ -19,6 +19,7 @@ services:
     ports:
       - '49800:80'
       - '49801:443'
+      - '49888:8501'
     # GPUをコンテナで利用する場合は以下を設定してください。おまじない。
     env_file:
       - .env
@@ -129,6 +130,17 @@ services:
     depends_on:
       - "etcd"
       - "minio"
+
+  nginx:
+    container_name: teamF-nginx
+    build: ./nginx
+    networks:
+      - teamF-network
+    # volumes:
+    #   - /home/teamF/nginx/keys:/etc/nginx/ssl:ro
+    ports:
+      - 49895:80
+      - 49896:443
 
 volumes:
   ollama:

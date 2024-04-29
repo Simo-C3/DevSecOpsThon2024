@@ -430,3 +430,10 @@ db/volumes/
 volumes/
 model/
 docker.tar.gz
+
+*server.key
+*ssl/
+*.crt
+*.csr
+*.pem
+*.password

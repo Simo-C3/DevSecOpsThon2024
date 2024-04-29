@@ -12,3 +12,6 @@ lxml
 unstructured
 faiss-gpu
 sentence_transformers
+pydantic
+streamlit
+streamlit_chat
