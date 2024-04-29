@@ -1,0 +1,14 @@
+credentials:
+  usernames: # ログイン可能なユーザーを設定
+    testuser:
+      email: test@example.com
+      name: testuser
+      password: password
+    testuser2:
+      email: test@example.com
+      name: testuser2
+      password: password
+cookie: #
+  expiry_days: 30
+  key: some_signature_key
+  name: some_cookie_name

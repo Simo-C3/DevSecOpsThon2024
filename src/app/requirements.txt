@@ -1,0 +1,4 @@
+streamlit
+streamlit-chat
+opencv-python
+streamlit_chat
